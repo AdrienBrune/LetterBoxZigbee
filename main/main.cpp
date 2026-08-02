@@ -111,7 +111,7 @@ void _task_report(void *pvParameters)
         uint16_t level = 0;
 
         battery.Setup();
-        if (battery.GetLevelPercent(level))
+        if (battery.GetBatteryPercent(level))
         {
             Memory::GetMemory().Set<uint32_t>(DATA_BATTERY, (uint32_t)level);
             updateBatteryStatus(ZB_EP_BATTERY, level);

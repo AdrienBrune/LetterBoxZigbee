@@ -87,7 +87,7 @@ void Battery::Setup()
     }
 }
 
-bool Battery::GetLevelPercent(uint16_t& level)
+bool Battery::GetBatteryPercent(uint16_t& level)
 {
     uint16_t adu = 0;
     if (!_GetAverageMeasurement(adu))
@@ -95,45 +95,39 @@ bool Battery::GetLevelPercent(uint16_t& level)
         return false;
     }
 
-    static const std::map<float, float> voltageMap = {
-        {3.00f, 00.0f},
-        {3.50f, 10.0f},
-        {3.67f, 95.0f},
-        {4.10f, 100.0f}
+    // experimental result
+    static const std::map<uint16_t, float> batteryLevelMapAdc = {
+        {4096, 100.0f},
+        {3850, 86.0f},
+        {3277, 5.9f},
+        {2768, 0.0f}
     };
-    const float vref_mv = 2200.0f; // 6db applied
-    const float pontDiv = 2.0f;
 
-    float pinVoltage = (adu * vref_mv) / 4095.0f;
-    float batteryVoltage = (pinVoltage * pontDiv) / 1000.0f;
-
+    // linear interpolation
     float percent = 0.0f;
-    if (batteryVoltage <= voltageMap.begin()->first)
+    if (adu <= batteryLevelMapAdc.begin()->first)
     {
         percent = 0.0f;
     } 
-    else if (batteryVoltage >= voltageMap.rbegin()->first)
+    else if (adu >= batteryLevelMapAdc.rbegin()->first)
     {
         percent = 100.0f;
     } 
     else
     {
-        auto itUpper = voltageMap.lower_bound(batteryVoltage);
+        auto itUpper = batteryLevelMapAdc.lower_bound(adu);
         auto itLower = std::prev(itUpper);
 
-        float v1 = itLower->first;
+        uint16_t adu1 = itLower->first;
         float p1 = itLower->second;
-        float v2 = itUpper->first;
+        uint16_t adu2 = itUpper->first;
         float p2 = itUpper->second;
 
-        percent = p1 + ((batteryVoltage - v1) * (p2 - p1) / (v2 - v1));
+        percent = p1 + ((adu - adu1) * (p2 - p1) / (adu2 - adu1));
     }
-
     level = static_cast<uint16_t>(std::clamp(std::ceil(percent), 0.0f, 100.0f));
 
-    level = (uint16_t)(((float)adu * 2.0f) / 100.0f);
-
-    DebugLogger::getInstance().print(DEBUG_ADC, DEBUG_INFO, "Battery: %2.2fV -> %d%% (adu: %d)", batteryVoltage, level, adu);
+    DebugLogger::getInstance().print(DEBUG_ADC, DEBUG_INFO, "Battery: %2.0f (adu: %d)", level, adu);
 
     return true;
 }

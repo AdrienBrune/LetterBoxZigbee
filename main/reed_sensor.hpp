@@ -49,7 +49,7 @@ public:
     ~Battery(){}
 public:
     void Setup();
-    bool GetLevelPercent(uint16_t& level);
+    bool GetBatteryPercent(uint16_t& level);
 private:
     bool _GetAverageMeasurement(uint16_t& adu);
 private:
