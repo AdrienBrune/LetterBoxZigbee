@@ -6,14 +6,14 @@
   <img width="299" height="304" alt="image" src="https://github.com/user-attachments/assets/cfab8511-e6a7-44d8-bd4c-d6fbcd6e8c2c" style="border-radius: 8px;" />
 </p>
 
-*A discrete, reliable IoT monitoring system for your mailbox powered by an ESP32-H2, wired magnetic reed sensors, and native Zigbee2MQTT integration.*
+*A discrete, reliable IoT monitoring system for your mailbox powered by an ESP32-C6, wired magnetic reed sensors, and native Zigbee2MQTT integration.*
 
 ---
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![Author](https://img.shields.io/badge/author-Adrien%20Brune-orange.svg)
 ![Language](https://img.shields.io/badge/language-C%2F++-yellow.svg)
-![Hardware](https://img.shields.io/badge/hardware-ESP32H2-red.svg)
+![Hardware](https://img.shields.io/badge/hardware-ESP32C6-red.svg)
 ![Protocol](https://img.shields.io/badge/protocol-Zigbee-blueviolet.svg)
 ![Platform](https://img.shields.io/badge/platform-Home%20Assistant%20%7C%20Z2M-lightgrey.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
@@ -34,14 +34,14 @@ Because traditional metal mailboxes act as a Faraday cage that heavily blocks wi
 * **Dual-State Detection:** Independently monitors both the main mailbox door and the letter slot flap via dedicated wired magnetic reed switches.
 * **Faraday Cage Bypass:** Custom 3D-printed exterior housing places the ESP32-H2 outside the metal structure for maximum Zigbee range and reliability.
 * **Native Zigbee2MQTT (Z2M) Support:** Fully compatible with Z2M and Home Assistant out of the box using custom external converter definitions.
-* **Low Power & High Responsiveness:** Instantaneous state updates triggered by hardware-level digital interrupts on the ESP32-H2.
+* **Low Power & Battery:** ESP32 enters deep sleep to ensure battery life span allowing it to last more than six month.
 * **Clean Weatherproof Design:** Discreet external casing designed to blend in cleanly while protecting the microcontroller.
 
 ---
 
 ## 🛠️ Technical Stack & Hardware
 
-* **Microcontroller:** ESP32-H2 (RISC-V SoC with native IEEE 802.15.4 / Zigbee)
+* **Microcontroller:** ESP32-C6 devkit with battery handler module embedded
 * **Firmware Language:** C++
 * **Communication Protocol:** Zigbee (Zigbee2MQTT compatible)
 * **Sensors:** 2x Magnetic Reed Switches (Door + Flap)
