@@ -7,13 +7,13 @@ void Memory::_Save()
 {
     std::lock_guard<std::mutex> lock(mMutex);
 
-    DebugLogger::getInstance().print(DEBUG_EEPROM, DEBUG_INFO, "Memory save requested");
+    DebugLogger::GetInstance().print(DEBUG_EEPROM, DEBUG_INFO, "Memory save requested");
 
     nvs_handle_t handle;
     esp_err_t err = nvs_open("configuration", NVS_READWRITE, &handle);
     if (err != ESP_OK)
     {
-        DebugLogger::getInstance().print(DEBUG_EEPROM, DEBUG_ERROR, "NVS open failed (%d)", err);
+        DebugLogger::GetInstance().print(DEBUG_EEPROM, DEBUG_ERROR, "NVS open failed (%d)", err);
         return;
     }
 
@@ -28,7 +28,7 @@ void Memory::_Save()
                 uint8_t val = item.second.GetValue<bool>() ? 1 : 0;
                 set_err = nvs_set_u8(handle, key, val);
                 if (set_err == ESP_OK) {
-                    DebugLogger::getInstance().print(DEBUG_EEPROM, DEBUG_INFO, "%s save : %s", key, val ? "true" : "false");
+                    DebugLogger::GetInstance().print(DEBUG_EEPROM, DEBUG_INFO, "%s save : %s", key, val ? "true" : "false");
                 }
                 break;
             }
@@ -39,7 +39,7 @@ void Memory::_Save()
                 set_err = nvs_set_u32(handle, key, val);
                 if (set_err == ESP_OK)
                 {
-                    DebugLogger::getInstance().print(DEBUG_EEPROM, DEBUG_INFO, "%s save : %u", key, val);
+                    DebugLogger::GetInstance().print(DEBUG_EEPROM, DEBUG_INFO, "%s save : %u", key, val);
                 }
                 break;
             }
@@ -49,7 +49,7 @@ void Memory::_Save()
                 set_err = nvs_set_blob(handle, key, &val, sizeof(float));
                 if (set_err == ESP_OK)
                 {
-                    DebugLogger::getInstance().print(DEBUG_EEPROM, DEBUG_INFO, "%s save : %.2f", key, val);
+                    DebugLogger::GetInstance().print(DEBUG_EEPROM, DEBUG_INFO, "%s save : %.2f", key, val);
                 }
                 break;
             }
@@ -57,14 +57,14 @@ void Memory::_Save()
 
         if (set_err != ESP_OK)
         {
-            DebugLogger::getInstance().print(DEBUG_EEPROM, DEBUG_ERROR, "NVS set failed for %s (%d)", key, set_err);
+            DebugLogger::GetInstance().print(DEBUG_EEPROM, DEBUG_ERROR, "NVS set failed for %s (%d)", key, set_err);
         }
     }
 
     err = nvs_commit(handle);
     if (err != ESP_OK)
     {
-        DebugLogger::getInstance().print(DEBUG_EEPROM, DEBUG_ERROR, "NVS commit failed (%d)", err);
+        DebugLogger::GetInstance().print(DEBUG_EEPROM, DEBUG_ERROR, "NVS commit failed (%d)", err);
     }
 
     nvs_close(handle);
@@ -74,13 +74,13 @@ void Memory::Load()
 {
     std::lock_guard<std::mutex> lock(mMutex);
 
-    DebugLogger::getInstance().print(DEBUG_EEPROM, DEBUG_INFO, "Memory load requested");
+    DebugLogger::GetInstance().print(DEBUG_EEPROM, DEBUG_INFO, "Memory load requested");
 
     nvs_handle_t handle;
     esp_err_t err = nvs_open("configuration", NVS_READONLY, &handle);
     if (err != ESP_OK)
     {
-        DebugLogger::getInstance().print(DEBUG_EEPROM, DEBUG_WARNING, "NVS open failed or empty (%d)", err);
+        DebugLogger::GetInstance().print(DEBUG_EEPROM, DEBUG_WARNING, "NVS open failed or empty (%d)", err);
         return;
     }
 
@@ -120,7 +120,7 @@ void Memory::Load()
 
         if (get_err == ESP_OK)
         {
-            DebugLogger::getInstance().print(DEBUG_EEPROM, DEBUG_INFO, "Loaded '%s' from Flash", key);
+            DebugLogger::GetInstance().print(DEBUG_EEPROM, DEBUG_INFO, "Loaded '%s' from Flash", key);
         }
     }
     nvs_close(handle);

@@ -24,7 +24,7 @@
 class DebugLogger
 {
 public:
-    inline static DebugLogger& getInstance()
+    inline static DebugLogger& GetInstance()
     {
         static DebugLogger instance;
         return instance;

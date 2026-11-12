@@ -4,6 +4,8 @@
 #include <map>
 #include <atomic>
 
+#define ZB_RETRY_DELAY_MS   1500
+
 std::atomic<bool> connected = false;
 
 static char modelName[] = { 0x0A, 'L', 'E', 'T', 'T', 'E', 'R', '-', 'B', 'O', 'X' };
@@ -65,15 +67,15 @@ void updateReedStatus(uint8_t endpoint, bool is_open)
 {
     if (connected.load() == false)
     {
-        DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_ERROR, "not connected to zigbee, can't report attribute");
+        DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_ERROR, "not connected to zigbee, can't report attribute");
         return;
     }
 
-    DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Try to update ep%d attribute to %s", endpoint, is_open ? "open" : "close");
+    DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Try to update ep%d attribute to %s", endpoint, is_open ? "open" : "close");
 
     if (esp_zb_lock_acquire(portMAX_DELAY))
     {
-        DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Try to change attribute localy");
+        DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Try to change attribute localy");
 
         esp_zb_zcl_status_t status = esp_zb_zcl_set_attribute_val(
             endpoint,
@@ -85,12 +87,12 @@ void updateReedStatus(uint8_t endpoint, bool is_open)
         );
         if (status != ESP_ZB_ZCL_STATUS_SUCCESS)
         {
-            DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_ERROR, "set attribut localy failed");
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_ERROR, "set attribut localy failed");
             esp_zb_lock_release();
             return;
         }
 
-        DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Try to send attribute to coordinator");
+        DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Try to send attribute to coordinator");
 
         esp_zb_zcl_report_attr_cmd_t report_cmd;
         memset(&report_cmd, 0, sizeof(esp_zb_zcl_report_attr_cmd_t));
@@ -113,11 +115,11 @@ void updateBatteryStatus(uint8_t endpoint, uint16_t levelPercent)
 {
     uint8_t levelPercent200 = levelPercent * 2;
 
-    DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Try to update ep%d attribute to %d%", endpoint, levelPercent);
+    DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Try to update ep%d attribute to %d", endpoint, levelPercent);
 
     if (esp_zb_lock_acquire(portMAX_DELAY))
     {
-        DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Try to change attribute localy");
+        DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Try to change attribute localy");
 
         esp_zb_zcl_set_attribute_val(
             endpoint,
@@ -128,7 +130,7 @@ void updateBatteryStatus(uint8_t endpoint, uint16_t levelPercent)
             false
         );
 
-        DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Try to send attribute to coordinator");
+        DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Try to send attribute to coordinator");
 
         esp_zb_zcl_report_attr_cmd_t report_cmd;
         memset(&report_cmd, 0, sizeof(esp_zb_zcl_report_attr_cmd_t));
@@ -149,7 +151,7 @@ static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask)
 {
     if(esp_zb_bdb_start_top_level_commissioning(mode_mask) != ESP_OK)
     {
-        DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_WARNING, "commissioning failed");
+        DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_WARNING, "commissioning failed");
     }
 }
 void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
@@ -160,7 +162,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
     switch (sig_type)
     {
     case ESP_ZB_ZDO_SIGNAL_SKIP_STARTUP:
-        DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "initialize Zigbee stack");
+        DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "initialize Zigbee stack");
         esp_zb_scheduler_alarm(bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_INITIALIZATION, 1000);
         break;
         
@@ -168,22 +170,24 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
     case ESP_ZB_BDB_SIGNAL_DEVICE_REBOOT:
         if (err_status == ESP_OK)
         {
-            DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Deferred driver initialization ...");
-            DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Device started up in %s factory-reset mode", esp_zb_bdb_is_factory_new() ? "" : "non");
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Deferred driver initialization ...");
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Device started up in %s factory-reset mode", esp_zb_bdb_is_factory_new() ? "" : "non");
             if (esp_zb_bdb_is_factory_new())
             {
-                DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "start network steering");
+                DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "start network steering");
                 esp_zb_scheduler_alarm(bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 1000);
             }
             else
             {
-                DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "device reconnected");
+                DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "device reconnected");
                 connected.store(true);
             }
         }
         else
         {
-            DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "failed to initialize Zigbee stack (status: %s)", esp_err_to_name(err_status));
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_WARNING, "failed to initialize Zigbee stack (status: %s), retrying", esp_err_to_name(err_status));
+            connected.store(false);
+            esp_zb_scheduler_alarm(bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_INITIALIZATION, ZB_RETRY_DELAY_MS);
         }
         break;
 
@@ -192,7 +196,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         {
             esp_zb_ieee_addr_t extended_pan_id;
             esp_zb_get_extended_pan_id(extended_pan_id);
-            DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "joined network successfully (Extended PAN ID: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x, PAN ID: 0x%04hx, Channel:%d, Short Address: 0x%04hx)",
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "joined network successfully (Extended PAN ID: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x, PAN ID: 0x%04hx, Channel:%d, Short Address: 0x%04hx)",
             extended_pan_id[7], extended_pan_id[6], extended_pan_id[5], extended_pan_id[4],
                      extended_pan_id[3], extended_pan_id[2], extended_pan_id[1], extended_pan_id[0],
                     esp_zb_get_pan_id(), esp_zb_get_current_channel(), esp_zb_get_short_address());
@@ -200,15 +204,31 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         }
         else
         {
-            DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "network steering was not successful (status: %s)", esp_err_to_name(err_status));
-            esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 1000);
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "network steering was not successful (status: %s)", esp_err_to_name(err_status));
+            esp_zb_scheduler_alarm(bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, ZB_RETRY_DELAY_MS);
         }
-        break;        
+        break;
+
+    case ESP_ZB_ZDO_SIGNAL_LEAVE:
+    {
+        esp_zb_zdo_signal_leave_params_t *leave_params = (esp_zb_zdo_signal_leave_params_t *)esp_zb_app_signal_get_params(p_sg_p);
+        connected.store(false);
+        if (leave_params && leave_params->leave_type == ESP_ZB_NWK_LEAVE_TYPE_RESET)
+        {
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_WARNING, "device left the network, start network steering");
+            esp_zb_scheduler_alarm(bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, ZB_RETRY_DELAY_MS);
+        }
+        else
+        {
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_WARNING, "device left the network, rejoin in progress");
+        }
+        break;
+    }
 
     default:
         if(sig_type != ESP_ZB_COMMON_SIGNAL_CAN_SLEEP)
         {
-            DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status));
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status));
         }
         break;
     }
@@ -221,29 +241,29 @@ extern "C"  esp_err_t zbActionHandler(esp_zb_core_action_callback_id_t callback_
         case ESP_ZB_CORE_SET_ATTR_VALUE_CB_ID:
         {
             esp_zb_zcl_set_attr_value_message_t *set_attr_msg = (esp_zb_zcl_set_attr_value_message_t *)message;
-            DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Attribute %x updated on ep %d, cluster 0x%x by coordinator", 
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Attribute %x updated on ep %d, cluster 0x%x by coordinator", 
                      set_attr_msg->attribute.id, set_attr_msg->info.dst_endpoint, set_attr_msg->info.cluster);
             break;
         }
 
         case ESP_ZB_CORE_CMD_READ_ATTR_RESP_CB_ID:
-            DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Asked to read attribute");
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Asked to read attribute");
             break;
 
         case ESP_ZB_CORE_REPORT_ATTR_CB_ID:
-            DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Attribute successfully reported to coordinator");
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Attribute successfully reported to coordinator");
             break;
 
         case ESP_ZB_CORE_IAS_ZONE_ENROLL_RESPONSE_VALUE_CB_ID:
-            DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Enrolling successful");
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Enrolling successful");
             break;
 
         case ESP_ZB_CORE_CMD_DEFAULT_RESP_CB_ID:
-            DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Attribute report successful");
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Attribute report successful");
             break;
 
         default:
-            DebugLogger::getInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Unhandled action (ID:%d)", callback_id);
+            DebugLogger::GetInstance().print(DEBUG_ZIGBEE, DEBUG_INFO, "Unhandled action (ID:%d)", callback_id);
             break;
     }
     return ESP_OK;

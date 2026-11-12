@@ -42,26 +42,27 @@ void _task_zigbee(void *pvParameters)
 {
     if(initZigbee() != ESP_OK)
     {
-        DebugLogger::getInstance().print(DEBUG_TASK, DEBUG_ERROR, "ZIGBEE init failure");
-        return;
+        DebugLogger::GetInstance().print(DEBUG_TASK, DEBUG_ERROR, "ZIGBEE init failure");
+        vTaskDelete(NULL);
     }
 
     if(initDevice() != ESP_OK)
     {
-        DebugLogger::getInstance().print(DEBUG_TASK, DEBUG_ERROR, "ZIGBEE device registration failure");
-        return;
+        DebugLogger::GetInstance().print(DEBUG_TASK, DEBUG_ERROR, "ZIGBEE device registration failure");
+        vTaskDelete(NULL);
     }
 
     esp_zb_set_rx_on_when_idle(false);
 
     if(esp_zb_start(false) != ESP_OK)
     {
-        DebugLogger::getInstance().print(DEBUG_TASK, DEBUG_ERROR, "ZIGBEE hasn't started");
-        return;
+        DebugLogger::GetInstance().print(DEBUG_TASK, DEBUG_ERROR, "ZIGBEE hasn't started");
+        vTaskDelete(NULL);
     }
 
-    DebugLogger::getInstance().print(DEBUG_TASK, DEBUG_INFO, "ZIGBEE main loop started");
+    DebugLogger::GetInstance().print(DEBUG_TASK, DEBUG_INFO, "ZIGBEE main loop started");
     esp_zb_stack_main_loop();
+    vTaskDelete(NULL);
 }
 
 
@@ -75,10 +76,10 @@ void _task_report(void *pvParameters)
     switch (wakeup)
     {
         case ESP_SLEEP_WAKEUP_EXT1:
-            DebugLogger::getInstance().print(DEBUG_TASK, DEBUG_INFO, "ESP32 woke up by gpio");
+            DebugLogger::GetInstance().print(DEBUG_TASK, DEBUG_INFO, "ESP32 woke up by gpio");
             break;
         case ESP_SLEEP_WAKEUP_TIMER:
-            DebugLogger::getInstance().print(DEBUG_TASK, DEBUG_INFO, "ESP32 woke up by timer");
+            DebugLogger::GetInstance().print(DEBUG_TASK, DEBUG_INFO, "ESP32 woke up by timer");
             break;
         default:
             break;
@@ -110,8 +111,7 @@ void _task_report(void *pvParameters)
         Battery battery;
         uint16_t level = 0;
 
-        battery.Setup();
-        if (battery.GetBatteryPercent(level))
+        if (battery.Setup() && battery.GetBatteryPercent(level))
         {
             Memory::GetMemory().Set<uint32_t>(DATA_BATTERY, (uint32_t)level);
             updateBatteryStatus(ZB_EP_BATTERY, level);
@@ -164,13 +164,13 @@ extern "C" void app_main(void)
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
-        DebugLogger::getInstance().print(DEBUG_GENERIC, DEBUG_ERROR, "NVS flash init");
+        DebugLogger::GetInstance().print(DEBUG_GENERIC, DEBUG_ERROR, "NVS flash init");
         ESP_ERROR_CHECK(nvs_flash_erase());
         err = nvs_flash_init();
     }
     if (err != ESP_OK)
     {
-        DebugLogger::getInstance().print(DEBUG_GENERIC, DEBUG_ERROR, "NVS init failure, program stopped");
+        DebugLogger::GetInstance().print(DEBUG_GENERIC, DEBUG_ERROR, "NVS init failure, program stopped");
         return;
     }
 
@@ -180,7 +180,7 @@ extern "C" void app_main(void)
     };
     if(esp_zb_platform_config(&config) != ESP_OK)
     {
-        DebugLogger::getInstance().print(DEBUG_GENERIC, DEBUG_ERROR, "ZIGBEE init failure, program stopped");
+        DebugLogger::GetInstance().print(DEBUG_GENERIC, DEBUG_ERROR, "ZIGBEE init failure, program stopped");
         return;
     }
 
@@ -188,7 +188,7 @@ extern "C" void app_main(void)
 
     gpio_set_direction((gpio_num_t)LED_PIN, GPIO_MODE_OUTPUT);
 
-    DebugLogger::getInstance().print(DEBUG_GENERIC, DEBUG_INFO, "init completed");
+    DebugLogger::GetInstance().print(DEBUG_GENERIC, DEBUG_INFO, "init completed");
 
     xTaskCreate(_task_zigbee, "zigbee", 8124, NULL, 3, NULL);
     xTaskCreate(_task_report, "report", 4096, NULL, 2, NULL);

@@ -45,10 +45,21 @@ private:
 class Battery
 {
 public:
-    Battery(){}
-    ~Battery(){}
+    Battery():
+        m_handle(nullptr)
+    {}
+    ~Battery()
+    {
+        if (m_handle != nullptr)
+        {
+            adc_oneshot_del_unit(m_handle);
+            m_handle = nullptr;
+        }
+    }
+    Battery(const Battery&) = delete;
+    Battery& operator=(const Battery&) = delete;
 public:
-    void Setup();
+    bool Setup();
     bool GetBatteryPercent(uint16_t& level);
 private:
     bool _GetAverageMeasurement(uint16_t& adu);

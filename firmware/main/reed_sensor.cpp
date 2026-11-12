@@ -25,7 +25,7 @@ void setupWakeup()
     esp_sleep_enable_ext1_wakeup_io(mask, ESP_EXT1_WAKEUP_ANY_HIGH);
 
     esp_sleep_enable_timer_wakeup(REPORTING_MAX_PERIOD_SEC * US_TO_SEC);
-    DebugLogger::getInstance().print(DEBUG_SLEEP, DEBUG_INFO, "Automatic wakeup setup to %d seconds", REPORTING_MAX_PERIOD_SEC);
+    DebugLogger::GetInstance().print(DEBUG_SLEEP, DEBUG_INFO, "Automatic wakeup setup to %d seconds", REPORTING_MAX_PERIOD_SEC);
 }
 
 void enterDeepSleep()
@@ -34,12 +34,12 @@ void enterDeepSleep()
     {
         if (gpio_get_level(PIN_DOOR) == 1 || gpio_get_level(PIN_FLAP) == 1)
         {
-            DebugLogger::getInstance().print(DEBUG_SLEEP, DEBUG_WARNING, "gpio not correctly setup, ESP32 can't enter deep sleep");
+            DebugLogger::GetInstance().print(DEBUG_SLEEP, DEBUG_WARNING, "gpio not correctly setup, ESP32 can't enter deep sleep");
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
         else
         {
-            DebugLogger::getInstance().print(DEBUG_SLEEP, DEBUG_INFO, "ESP32 will enter deep sleep ...");
+            DebugLogger::GetInstance().print(DEBUG_SLEEP, DEBUG_INFO, "ESP32 will enter deep sleep ...");
             esp_deep_sleep_start();
         }
     }
@@ -50,7 +50,7 @@ void ReedSensor::Update()
 {
     if (m_changed)
     {
-        DebugLogger::getInstance().print(DEBUG_REED, DEBUG_WARNING, "reed sensor status reading requested but last value has not been used");
+        DebugLogger::GetInstance().print(DEBUG_REED, DEBUG_WARNING, "reed sensor status reading requested but last value has not been used");
         return;
     }
 
@@ -63,28 +63,38 @@ void ReedSensor::Update()
 }
 
 
-void Battery::Setup()
+bool Battery::Setup()
 {
+    if (m_handle != nullptr) // already initialized
+    {
+        return true;
+    }
+
     adc_oneshot_unit_init_cfg_t config_unit = {
         .unit_id = ADC_UNIT_1,
         .clk_src = ADC_DIGI_CLK_SRC_DEFAULT,
         .ulp_mode = ADC_ULP_MODE_DISABLE
     };
-    if (adc_oneshot_new_unit(&config_unit, &m_handle) != ESP_OK)
+    adc_oneshot_unit_handle_t handle = nullptr;
+    if (adc_oneshot_new_unit(&config_unit, &handle) != ESP_OK)
     {
-        DebugLogger::getInstance().print(DEBUG_ADC, DEBUG_ERROR, "Setup ADC unit failure");
-        return;
+        DebugLogger::GetInstance().print(DEBUG_ADC, DEBUG_ERROR, "Setup ADC unit failure");
+        return false;
     }
 
     adc_oneshot_chan_cfg_t config_ch = {
         .atten = ADC_ATTEN_DB_6,
         .bitwidth = ADC_BITWIDTH_12,
     };
-    if (adc_oneshot_config_channel(m_handle, ADC_CHANNEL_0, &config_ch) != ESP_OK)
+    if (adc_oneshot_config_channel(handle, ADC_CHANNEL_0, &config_ch) != ESP_OK)
     {
-        DebugLogger::getInstance().print(DEBUG_ADC, DEBUG_ERROR, "Setup ADC channel failure");
-        return;
+        DebugLogger::GetInstance().print(DEBUG_ADC, DEBUG_ERROR, "Setup ADC channel failure");
+        adc_oneshot_del_unit(handle);
+        return false;
     }
+
+    m_handle = handle;
+    return true;
 }
 
 bool Battery::GetBatteryPercent(uint16_t& level)
@@ -127,13 +137,19 @@ bool Battery::GetBatteryPercent(uint16_t& level)
     }
     level = static_cast<uint16_t>(std::clamp(std::ceil(percent), 0.0f, 100.0f));
 
-    DebugLogger::getInstance().print(DEBUG_ADC, DEBUG_INFO, "Battery: %2.0f (adu: %d)", level, adu);
+    DebugLogger::GetInstance().print(DEBUG_ADC, DEBUG_INFO, "Battery: %d (adu: %d)", level, adu);
 
     return true;
 }
 
 bool Battery::_GetAverageMeasurement(uint16_t& averageAdu)
 {
+    if (m_handle == nullptr)
+    {
+        DebugLogger::GetInstance().print(DEBUG_ADC, DEBUG_ERROR, "ADC not initialized, call Setup() first");
+        return false;
+    }
+
     const int numSamples = 12;
     const int numSamplesRemoved = 6;
     std::vector<int> samples;
@@ -144,7 +160,7 @@ bool Battery::_GetAverageMeasurement(uint16_t& averageAdu)
         int adu = 0;
         if (adc_oneshot_read(m_handle, ADC_CHANNEL_0, &adu) != ESP_OK)
         {
-            DebugLogger::getInstance().print(DEBUG_ADC, DEBUG_ERROR, "Measurement ADC failure");
+            DebugLogger::GetInstance().print(DEBUG_ADC, DEBUG_ERROR, "Measurement ADC failure");
             return false;
         }
         samples.push_back(adu);
